@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Car Price Predictor</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      color: #1a202c;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+      color: white;
+      padding: 28px 40px;
+    }
+    header h1 { font-size: 1.8rem; font-weight: 700; }
+    header p  { margin-top: 4px; opacity: 0.8; font-size: 0.95rem; }
+
+    /* ── Layout ───────────────────────────────────────── */
+    .container {
+      max-width: 960px;
+      margin: 36px auto;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 680px) { .container { grid-template-columns: 1fr; } }
+
+    /* ── Card ─────────────────────────────────────────── */
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: #1e3a5f;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 10px;
+    }
+
+    /* ── Form ─────────────────────────────────────────── */
+    .form-group { margin-bottom: 16px; }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+    select, input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #cbd5e0;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: #2d3748;
+      background: #f7fafc;
+      transition: border-color 0.2s;
+      appearance: none;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: #2d6a9f;
+      background: white;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, #1e3a5f, #2d6a9f);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    button:hover   { opacity: 0.92; }
+    button:active  { transform: scale(0.98); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── Result box ───────────────────────────────────── */
+    #result-box {
+      display: none;
+      margin-top: 20px;
+      background: linear-gradient(135deg, #e6f4ea, #d4edda);
+      border: 1.5px solid #a3d9a5;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+    }
+    #result-box .label { font-size: 0.85rem; color: #276749; font-weight: 600; }
+    #result-box .price { font-size: 2rem; font-weight: 700; color: #1a4731; margin-top: 4px; }
+
+    #error-box {
+      display: none;
+      margin-top: 16px;
+      background: #fff5f5;
+      border: 1.5px solid #fc8181;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #c53030;
+      font-size: 0.9rem;
+    }
+
+    /* ── History table ────────────────────────────────── */
+    .history-card { grid-column: 1 / -1; }
+
+    .loading { color: #718096; font-size: 0.9rem; padding: 10px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    th {
+      background: #edf2f7;
+      color: #4a5568;
+      font-weight: 600;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f4f8;
+      color: #2d3748;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f7fafc; }
+    .badge {
+      background: #ebf4ff;
+      color: #2b6cb0;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .empty { color: #a0aec0; font-size: 0.9rem; padding: 20px 0; text-align: center; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 Car Price Predictor</h1>
+  <p>Predict second-hand car prices using machine learning</p>
+</header>
+
+<div class="container">
+
+  <!-- ── Prediction Form ── -->
+  <div class="card">
+    <h2>Enter Car Details</h2>
+
+    <div class="form-group">
+      <label>Company</label>
+      <select id="company">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Model Name</label>
+      <select id="name">
+        <option value="">Select company first</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Year of Purchase</label>
+      <input type="number" id="year" placeholder="e.g. 2015" min="1995" max="2024"/>
+    </div>
+
+    <div class="form-group">
+      <label>Kilometres Driven</label>
+      <input type="number" id="kms_driven" placeholder="e.g. 45000" min="0"/>
+    </div>
+
+    <div class="form-group">
+      <label>Fuel Type</label>
+      <select id="fuel_type">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+
+    <button id="predict-btn" onclick="predict()">Predict Price</button>
+
+    <div id="result-box">
+      <div class="label">Estimated Market Price</div>
+      <div class="price" id="result-price">—</div>
+    </div>
+    <div id="error-box"></div>
+  </div>
+
+  <!-- ── Info Card ── -->
+  <div class="card">
+    <h2>How It Works</h2>
+    <p style="color:#4a5568; line-height:1.7; font-size:0.92rem;">
+      This tool uses a <strong>Multiple Linear Regression</strong> model trained on
+      712 cleaned records from Quikr's used-car listings.
+    </p>
+    <br/>
+    <p style="color:#4a5568; line-height:1.7; font-size:0.92rem;">
+      <strong>Pipeline steps:</strong><br/>
+      1. Drop "Ask For Price" rows<br/>
+      2. Remove junk / scraped year values<br/>
+      3. Cast Price, kms_driven to numeric<br/>
+      4. Remove junk company entries<br/>
+      5. Drop remaining nulls<br/>
+      6. Remove duplicate rows<br/>
+      7. Outlier filtering<br/>
+      8. Feature engineering (car_age)<br/>
+      9. One-hot encode categoricals<br/>
+      10. Train / test split (80/20)<br/>
+      11. Train LinearRegression (scaled)<br/>
+    </p>
+    <br/>
+    <p style="color:#4a5568; font-size:0.92rem;">
+      <strong>Model performance</strong><br/>
+      R² = 0.729 &nbsp;|&nbsp; MAE ≈ ₹1,01,447
+    </p>
+  </div>
+
+  <!-- ── History Table ── -->
+  <div class="card history-card">
+    <h2>Recent Predictions</h2>
+    <div id="history-container">
+      <div class="loading">Loading history…</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API = '';   // same origin — empty string means relative URLs
+
+  let allNames = [];   // full name list from /meta
+  let META = {};
+
+  // ── Load dropdown options from /meta ────────────────────────────────
+  async function loadMeta() {
+    try {
+      const res  = await fetch(`${API}/meta`);
+      META = await res.json();
+      allNames = META.names;
+
+      // Company dropdown
+      const compSel = document.getElementById('company');
+      compSel.innerHTML = '<option value="">-- Select Company --</option>' +
+        META.companies.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      // Fuel type dropdown
+      const fuelSel = document.getElementById('fuel_type');
+      fuelSel.innerHTML = '<option value="">-- Select Fuel --</option>' +
+        META.fuel_types.map(f => `<option value="${f}">${f}</option>`).join('');
+
+      // Year input limits
+      document.getElementById('year').min = META.year_min;
+      document.getElementById('year').max = META.year_max;
+      document.getElementById('year').placeholder = `${META.year_min} – ${META.year_max}`;
+
+    } catch(e) {
+      console.error('Failed to load meta:', e);
+    }
+  }
+
+  // ── Filter car names by selected company ────────────────────────────
+  document.getElementById('company').addEventListener('change', function() {
+    const company = this.value.toLowerCase();
+    const nameSel = document.getElementById('name');
+
+    if (!company) {
+      nameSel.innerHTML = '<option value="">Select company first</option>';
+      return;
+    }
+
+    const filtered = allNames.filter(n => n.toLowerCase().startsWith(company));
+    nameSel.innerHTML = '<option value="">-- Select Model --</option>' +
+      (filtered.length
+        ? filtered.map(n => `<option value="${n}">${n}</option>`).join('')
+        : allNames.map(n => `<option value="${n}">${n}</option>`).join(''));
+  });
+
+  // ── Predict ──────────────────────────────────────────────────────────
+  async function predict() {
+    const btn = document.getElementById('predict-btn');
+    const resultBox = document.getElementById('result-box');
+    const errorBox  = document.getElementById('error-box');
+
+    resultBox.style.display = 'none';
+    errorBox.style.display  = 'none';
+
+    const payload = {
+      name:       document.getElementById('name').value,
+      company:    document.getElementById('company').value,
+      year:       parseInt(document.getElementById('year').value),
+      kms_driven: parseInt(document.getElementById('kms_driven').value),
+      fuel_type:  document.getElementById('fuel_type').value,
+    };
+
+    // Basic validation
+    if (!payload.name || !payload.company || !payload.year ||
+        !payload.kms_driven || !payload.fuel_type) {
+      errorBox.textContent = 'Please fill in all fields.';
+      errorBox.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Predicting…';
+
+    try {
+      const res  = await fetch(`${API}/predict`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+
+      document.getElementById('result-price').textContent = data.formatted;
+      resultBox.style.display = 'block';
+      loadHistory();   // refresh history after new prediction
+
+    } catch(e) {
+      errorBox.textContent = `Error: ${e.message}`;
+      errorBox.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Predict Price';
+    }
+  }
+
+  // ── Load prediction history ──────────────────────────────────────────
+  async function loadHistory() {
+    const container = document.getElementById('history-container');
+    try {
+      const res  = await fetch(`${API}/history`);
+      const rows = await res.json();
+
+      if (!rows.length) {
+        container.innerHTML = '<div class="empty">No predictions yet. Try one above!</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th><th>Company</th><th>Year</th>
+              <th>KMs</th><th>Fuel</th><th>Predicted Price</th><th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td>${r.name}</td>
+                <td>${r.company}</td>
+                <td>${r.year}</td>
+                <td>${Number(r.kms_driven).toLocaleString()}</td>
+                <td><span class="badge">${r.fuel_type}</span></td>
+                <td><strong>₹${Number(r.predicted).toLocaleString()}</strong></td>
+                <td style="color:#718096;font-size:0.82rem">${r.created_at}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>`;
+    } catch(e) {
+      container.innerHTML = '<div class="empty">Could not load history.</div>';
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  loadMeta();
+  loadHistory();
+</script>
+</body>
+</html>
